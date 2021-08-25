@@ -31,9 +31,10 @@ func TestFileFalloc(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	fn := path.Join(dir, "reserved")
-	err = FileFallocate(fn, sz, 0644, true)
-	assert.Nil(err)
-	fmt.Println(err.Error())
+	err = FileFallocate(fn, sz, 0664, true)
+	t.Fatal(err)
+	// assert.Nil(err)
+	// fmt.Println(err.Error())
 	fi, err := os.Stat(fn)
 	assert.Nil(err)
 	assert.Equal(sz, fi.Size())
