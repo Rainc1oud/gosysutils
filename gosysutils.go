@@ -19,7 +19,8 @@ func FileFallocate(filepath string, size int64, mode os.FileMode, force bool) er
 		return err
 	}
 	var offset int64 = 0 // do we need to be able to specify this?
-	return unix.Fallocate(int(fo.Fd()), uint32(mode.Perm()), offset, size)
+	// the mode field is not the same as permissions, but is a specific fallocate mode that we ignore (don't need) for now
+	return unix.Fallocate(int(fo.Fd()), 0, offset, size)
 }
 
 // we can use github.com/minio/minio/pkg/disk or github.com/shirou/gopsutil/disk,

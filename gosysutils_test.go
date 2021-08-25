@@ -17,7 +17,7 @@ func TestFsStat(t *testing.T) {
 	assert.Nil(err)
 	stat, err := FsStatFromPath(pwd)
 	assert.Nil(err)
-	fmt.Printf("some stats obtained:\nTotal %d, \nFree %d", stat.Total, stat.Free)
+	fmt.Printf("\nSome stats obtained:\nTotal %d, \nFree %d\n\n", stat.Total, stat.Free)
 }
 
 func TestFileFalloc(t *testing.T) {
@@ -31,11 +31,13 @@ func TestFileFalloc(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	fn := path.Join(dir, "reserved")
-	err = FileFallocate(fn, sz, 0664, true)
-	t.Fatal(err)
+	if err := FileFallocate(fn, sz, 0664, true); err != nil {
+		t.Fatal(err)
+	}
 	// assert.Nil(err)
 	// fmt.Println(err.Error())
 	fi, err := os.Stat(fn)
 	assert.Nil(err)
+	fmt.Printf("File size: specified: %d, actual: %d\n", sz, fi.Size())
 	assert.Equal(sz, fi.Size())
 }
