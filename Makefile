@@ -6,8 +6,9 @@ all: test
 
 .PHONY: test
 test: clean
-	go test -v ./...
+	sudo go test -v ./...
 
 .PHONY: clean
 clean:
-	rm -rf .test-*
+	sudo find .test-* -type d -exec umount {} \;
+	sudo rm -rf .test-*
