@@ -17,3 +17,6 @@
 test/fallocate-test
 .test*/
 *reserved
+
+.tmp*/
+.temp*/
