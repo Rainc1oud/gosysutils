@@ -181,3 +181,11 @@ func LsDirs(dir string) ([]string, error) {
 	}
 	return res[:c], nil
 }
+
+func IsSymlink(path string) bool {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
+}
