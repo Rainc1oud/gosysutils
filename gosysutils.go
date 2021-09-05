@@ -162,3 +162,22 @@ func UmountAll(mpr string) error {
 	}
 	return fmt.Errorf("errors occurred:\n%s", strings.Join(errstrs, "\n"))
 }
+
+func LsDirs(dir string) ([]string, error) {
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		return []string{}, nil
+	}
+	res := make([]string, len(des)) // first init res with upper bound, to avoid append inefficiency (at the cost of more mem)
+	c := 0
+	for _, de := range des {
+		if de.IsDir() {
+			res[0] = de.Name()
+			c += 1
+		}
+	}
+	if c < 1 {
+		return []string{}, nil
+	}
+	return res[:c], nil
+}
