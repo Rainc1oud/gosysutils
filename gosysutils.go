@@ -172,7 +172,7 @@ func LsDirs(dir string) ([]string, error) {
 	c := 0
 	for _, de := range des {
 		if de.IsDir() {
-			res[0] = de.Name()
+			res[c] = de.Name()
 			c += 1
 		}
 	}
