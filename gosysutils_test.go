@@ -74,6 +74,24 @@ func TestBindMountDidMount(t *testing.T) {
 	assert.Nil(err)
 }
 
+func TestLsNames(t *testing.T) {
+	assert := assert.New(t)
+
+	dirtgt := mktempdir(t)
+	defer os.RemoveAll(dirtgt)
+	// make a few dummy files and dirs
+	srcnms := []string{"somefile.txt", "somefile2.txt", "somedir1", "somedir2"}
+	assert.Nil(os.WriteFile(filepath.Join(dirtgt, srcnms[0]), []byte("Some content in the file\n"), 0644))
+	assert.Nil(os.WriteFile(filepath.Join(dirtgt, srcnms[1]), []byte("Some content in the file2\n"), 0644))
+	os.Mkdir(filepath.Join(dirtgt, srcnms[2]), 0755)
+	os.Mkdir(filepath.Join(dirtgt, srcnms[3]), 0755)
+
+	nms, err := LsNames(dirtgt)
+	fmt.Printf("LsNames(%s) => %v\n", dirtgt, nms)
+	assert.Nil(err)
+	assert.ElementsMatch(nms, srcnms)
+}
+
 func TestBindMountAll(t *testing.T) {
 	assert := assert.New(t)
 

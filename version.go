@@ -1,4 +1,4 @@
 package gosysutils
 
 // Version exposes the current package version.
-const Version = "v0.2.2"
+const Version = "v0.3.0"

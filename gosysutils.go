@@ -163,6 +163,7 @@ func UmountAll(mpr string) error {
 	return fmt.Errorf("errors occurred:\n%s", strings.Join(errstrs, "\n"))
 }
 
+// LsDirs returns a string slice of all directory names found in the dir argument
 func LsDirs(dir string) ([]string, error) {
 	des, err := os.ReadDir(dir)
 	if err != nil {
@@ -172,6 +173,26 @@ func LsDirs(dir string) ([]string, error) {
 	c := 0
 	for _, de := range des {
 		if de.IsDir() {
+			res[c] = de.Name()
+			c += 1
+		}
+	}
+	if c < 1 {
+		return []string{}, nil
+	}
+	return res[:c], nil
+}
+
+// LsNames returns a string slice of all (file) names found in the dir argument, excluding "." and ".."
+func LsNames(dir string) ([]string, error) {
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		return []string{}, nil
+	}
+	res := make([]string, len(des)) // first init res with upper bound, to avoid append inefficiency (at the cost of more mem)
+	c := 0
+	for _, de := range des {
+		if de.Name() != "." && de.Name() != ".." {
 			res[c] = de.Name()
 			c += 1
 		}

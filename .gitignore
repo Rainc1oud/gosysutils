@@ -20,3 +20,5 @@ test/fallocate-test
 
 .tmp*/
 .temp*/
+
+*debug_bin
