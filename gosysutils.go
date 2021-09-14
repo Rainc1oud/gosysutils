@@ -203,6 +203,26 @@ func LsNames(dir string) ([]string, error) {
 	return res[:c], nil
 }
 
+// LsNames returns a string slice with the absolute path of all (file) names found in the dir argument, excluding "." and ".."
+func LsNamesAbs(dir string) ([]string, error) {
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		return []string{}, nil
+	}
+	res := make([]string, len(des)) // first init res with upper bound, to avoid append inefficiency (at the cost of more mem)
+	c := 0
+	for _, de := range des {
+		if de.Name() != "." && de.Name() != ".." {
+			res[c] = filepath.Join(dir, de.Name())
+			c += 1
+		}
+	}
+	if c < 1 {
+		return []string{}, nil
+	}
+	return res[:c], nil
+}
+
 func IsSymlink(path string) bool {
 	fi, err := os.Lstat(path)
 	if err != nil {
