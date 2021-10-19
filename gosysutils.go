@@ -10,6 +10,56 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// FileExists checks whether filename exists and is a (regular) file (it returns (somehwat peculiar?) true, error if exists but is a dir)
+func FileExists(filename string) (bool, error) {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false, err
+	}
+	if info.IsDir() {
+		return true, fmt.Errorf("%s is a directory", filename)
+	}
+	return true, nil
+}
+
+// DirExists checks whether dirname exists and is a dir (it returns (somehwat peculiar?) true, error if exists but is not a dir)
+func DirExists(dirname string) (bool, error) {
+	info, err := os.Stat(dirname)
+	if os.IsNotExist(err) {
+		return false, err
+	}
+	if !info.IsDir() {
+		return true, fmt.Errorf("%s is not a directory", dirname)
+	}
+	return true, nil
+}
+
+func IsSymlink(path string) bool {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
+}
+
+// ResolveSymlinks takes a list of paths and returns the resolved symlinks
+func ResolveSymlinks(paths []string) ([]string, error) {
+	var errl []string
+	rls := make([]string, len(paths))
+	for i, l := range paths {
+		if rl, err := filepath.EvalSymlinks(l); err != nil {
+			errl = append(errl, fmt.Sprintf("%s: %s", l, err.Error()))
+			rls[i] = l
+		} else {
+			rls[i] = rl
+		}
+	}
+	if len(errl) > 0 {
+		return rls, fmt.Errorf(strings.Join(errl, "\n"))
+	}
+	return rls, nil
+}
+
 func FileFallocate(filepath string, size int64, mode os.FileMode, force bool) error {
 	if _, err := os.Stat(filepath); err == nil && !force {
 		return fmt.Errorf("not overwriting existing file %s, use force=true to force", filepath)
@@ -74,95 +124,6 @@ func DirSize(currentPath string, info os.FileInfo) (int64, error) {
 	return size, nil
 }
 
-// MountBind bind mounts src on target
-// The calling process needs to run under root for this!
-func MountBind(src, tgt string) error {
-	// mount point can:
-	//	(1) not exist => create;
-	//	(2) exist and not be a dir => error;
-	//	(3) be already mounted => Mount returns busy error? // otherwise we should check
-	var (
-		fi  os.FileInfo
-		err error
-	)
-
-	fi, err = os.Stat(src)
-	if os.IsNotExist(err) || !fi.IsDir() {
-		return fmt.Errorf("source dir %s doesn't exist or is not a directory", src)
-	}
-
-	fi, err = os.Stat(tgt)
-	if os.IsNotExist(err) { // mkdir (we don't handle other errors, we'll see further down the line)
-		// fmt.Printf("mountpoint %s doesn't exist, creating...\n", tgt)
-		if err := os.MkdirAll(tgt, 0700); err != nil { // restrictive mode, should suffice since we execute rcnode always as the same user
-			return fmt.Errorf("couldn't create mountpoint %s: %s", tgt, err.Error())
-		}
-	} else if !fi.IsDir() { // something already existed, is it a dir?
-		return fmt.Errorf("couldn't create mountpoint %s: a non-directory with the same name already exists", tgt)
-	}
-	// fmt.Printf("calling Mount(%s, %s, ...)\n", src, tgt)
-	return unix.Mount(src, tgt, "", unix.MS_BIND, "") // TBC: no constant for fstype?
-}
-
-// MountBindAll bind mounts the source dirs in args[:nargs-2] in args[nargs-1], creating mount points based on the source dir names as needed
-func MountBindAll(dirs ...string) error {
-	if len(dirs) < 2 {
-		return fmt.Errorf("at least two arguments required")
-	}
-	var errstrs []string
-	mpr := dirs[len(dirs)-1]
-	for _, src := range dirs[:len(dirs)-1] { // attention: go index ranges don't include last index itself
-		mp := filepath.Base(src)
-		if mp == "." || mp == "/" {
-			errstrs = append(errstrs, fmt.Sprintf("refusing to mount on mountpoint %s", mp))
-		} else {
-			// fmt.Printf("calling MountBind(%s, %s)\n", src, filepath.Join(mpr, mp))
-			if err := MountBind(src, filepath.Join(mpr, mp)); err != nil {
-				// fmt.Printf("error: %s\n", err.Error())
-				errstrs = append(errstrs, err.Error())
-			}
-		}
-	}
-	if len(errstrs) == 0 {
-		return nil
-	}
-	return fmt.Errorf("errors occurred:\n%s", strings.Join(errstrs, "\n"))
-}
-
-func Unmount(mountpoint string) error {
-	return unix.Unmount(mountpoint, 0)
-}
-
-// UmountAll unmounts all mountpoints under mount point root mpr
-// "not mounted" errors are ignored, other errors are collected and returned
-func UmountAll(mpr string) error {
-	var errstrs []string
-	des, err := os.ReadDir(mpr)
-	if err != nil {
-		return err
-	}
-
-	for _, de := range des {
-		// fmt.Printf("evaluating dir entry: %+v\n", de)
-		if de.IsDir() {
-			err := Unmount(filepath.Join(mpr, de.Name()))
-			if err != nil {
-				if err == unix.EINVAL {
-					// fmt.Printf("ignoring EINVAL (not mounted?) for dir: %s\n", de.Name())
-				} else {
-					// ignore "invalid argument" which covers "not mounted" (and more???)
-					errstrs = append(errstrs, err.Error())
-				}
-			}
-		}
-	}
-
-	if len(errstrs) == 0 {
-		return nil
-	}
-	return fmt.Errorf("errors occurred:\n%s", strings.Join(errstrs, "\n"))
-}
-
 // LsDirs returns a string slice of all directory names found in the dir argument
 func LsDirs(dir string) ([]string, error) {
 	des, err := os.ReadDir(dir)
@@ -221,12 +182,4 @@ func LsNamesAbs(dir string) ([]string, error) {
 		return []string{}, nil
 	}
 	return res[:c], nil
-}
-
-func IsSymlink(path string) bool {
-	fi, err := os.Lstat(path)
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
 }
