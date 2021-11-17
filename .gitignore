@@ -20,5 +20,7 @@ test/fallocate-test
 
 .tmp*/
 .temp*/
-
+*.log
 *debug_bin
+
+.vscode/
